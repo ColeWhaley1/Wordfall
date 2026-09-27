@@ -7,6 +7,21 @@ enum WordOutcome: String, Codable, Equatable, Sendable {
     case missed
 }
 
+/// One word of a finished or running game, for the end-of-game word list.
+struct WordRecord: Identifiable, Equatable, Sendable {
+    let id: UUID
+    /// The intended answer.
+    let word: String
+    /// What the player spelled, if they solved it.
+    let answer: String?
+    let outcome: WordOutcome
+    let points: Int
+    /// Seconds from spawn to solve or miss.
+    let time: TimeInterval
+
+    var isSolved: Bool { outcome != .missed }
+}
+
 struct SolveResult: Equatable, Sendable {
     /// The falling word's intended answer.
     let word: String

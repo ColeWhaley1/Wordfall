@@ -32,7 +32,7 @@ enum TestSupport {
             seed: 1,
             words: words.map { DailyWord(word: $0, scrambled: Array(String($0.reversed()))) },
             lives: 3,
-            baseFallDuration: 5
+            speed: 0.6
         )
     }
 }

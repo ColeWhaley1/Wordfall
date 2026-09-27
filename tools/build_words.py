@@ -18,7 +18,7 @@ from wordfreq import top_n_list, zipf_frequency
 
 MIN_LEN, MAX_LEN = 3, 9
 ACCEPT_ZIPF = 2.3      # rarer words are not accepted as answers
-PLAYABLE_ZIPF = 3.3    # rarer words are never spawned
+PLAYABLE_ZIPF = 3.5    # rarer words are never spawned
 COMMON_ZIPF = 4.0
 RARE_LETTERS = set("jqxzvkw")
 
@@ -47,7 +47,26 @@ BLOCK |= EXTRA_BLOCK
 SUBSTRING_BLOCK = ("fuck", "shit", "cunt", "nigg", "rape", "rapist", "nazi", "slut", "whore", "porn", "sex", "dick", "cock", "bitch", "kill", "murder", "suicid", "penis", "vagin")
 
 # Names and abbreviations that pass the dictionary checks but read as unfair targets.
-NOT_PLAYABLE = {"eric", "kemp", "demi", "los", "mormon", "midlands", "nana", "feds", "jean", "min", "eve", "jay", "sophia", "yates"}
+NOT_PLAYABLE = {
+    # Names
+    "eric", "kemp", "demi", "sophia", "yates", "ann", "ben", "bob", "dan", "don",
+    "joe", "lee", "sam", "tom", "alan", "anna", "dean", "ford", "hong", "jack",
+    "jane", "luke", "mary", "mike", "nick", "rick", "ross", "tony", "perkins",
+    "forrest", "kong", "paul", "john", "james", "david", "peter", "chris",
+    "kevin", "brian", "scott", "adam", "jake", "kate", "lisa", "matt", "ryan",
+    "sean", "tim", "jim", "kim", "ted", "ray", "jay", "eve", "jean", "nana",
+    "carl", "dave", "gary", "greg", "jeff", "josh", "mark", "neil", "phil",
+    "carter", "morgan", "parker", "harris", "cooper", "turner", "walker",
+    "wright", "miller", "taylor", "martin", "murphy", "nelson", "morris",
+    "hughes", "howard", "clarke", "wilson", "graham", "harvey", "warren",
+    "austin", "dallas", "boston", "denver", "vegas", "texas", "paris", "london",
+    "berlin", "sydney", "jordan", "chelsea", "arsenal", "diego", "santa",
+    "los", "mormon", "midlands", "sept", "tho", "mac", "gen", "non", "mum",
+    "anti", "semi", "auto", "electro", "per", "pro", "via", "feds", "min",
+    "billy", "china", "dutch", "frank", "harry", "henry", "japan", "jimmy",
+    "lewis", "maria", "robin", "roger", "smith",
+    "iter", "reit", "tare", "tor", "sol", "ere", "oft", "ode", "nth",
+}
 
 SUFFIXES = ["s", "es", "ed", "d", "ing", "er", "ers", "est", "ly", "ies", "ied"]
 

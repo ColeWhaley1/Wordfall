@@ -1,8 +1,8 @@
 import SwiftData
 import SwiftUI
 
-/// The play screen: HUD on top, the falling area in the middle, and the
-/// answer, letter pad and keyboard toggle within thumb reach at the bottom.
+/// The play screen: HUD and banner strip on top, the falling area in the
+/// middle, and the answer, letter pad and Clear button within thumb reach.
 struct GameView: View {
     let configuration: GameConfiguration
 
@@ -13,24 +13,17 @@ struct GameView: View {
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
 
     @State private var session: GameSession?
-    @State private var keyboardVisible = false
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
             if let session {
-                GameContent(
-                    session: session,
-                    keyboardVisible: $keyboardVisible,
-                    reducedMotion: reducedMotion,
-                    onQuit: quit
-                )
+                GameContent(session: session, reducedMotion: reducedMotion, onQuit: quit)
             }
         }
         .statusBarHidden()
         .onAppear {
             guard session == nil else { return }
-            keyboardVisible = services.settings.keyboardInputEnabled && services.settings.showKeyboard
             let session = GameSession(configuration: configuration, services: services)
             self.session = session
             session.begin(modelContext: modelContext)
@@ -42,9 +35,6 @@ struct GameView: View {
             if phase != .active {
                 session?.pause()
             }
-        }
-        .onChange(of: keyboardVisible) { _, visible in
-            services.settings.showKeyboard = visible
         }
     }
 
@@ -60,7 +50,6 @@ struct GameView: View {
 
 private struct GameContent: View {
     let session: GameSession
-    @Binding var keyboardVisible: Bool
     let reducedMotion: Bool
     let onQuit: () -> Void
 
@@ -68,25 +57,32 @@ private struct GameContent: View {
 
     var body: some View {
         let engine = session.engine
-        let settings = services.settings
         ZStack {
             DangerGlow(progress: engine.activeWord?.progress ?? 0, threshold: engine.configuration.dangerThreshold, flash: session.missFlash, reducedMotion: reducedMotion)
                 .ignoresSafeArea()
 
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 HUDView(engine: engine, onPause: { session.togglePause() })
+
+                BannerStrip(banner: session.banner)
 
                 BoardView(session: session, reducedMotion: reducedMotion)
                     .frame(maxHeight: .infinity)
 
-                AnswerView(word: engine.activeWord, input: engine.currentInput, shake: session.answerShake, reducedMotion: reducedMotion)
+                AnswerView(
+                    word: engine.activeWord,
+                    selection: engine.selection,
+                    shake: session.answerShake,
+                    reducedMotion: reducedMotion,
+                    onRemove: { id in engine.deselect(tileID: id) }
+                )
 
                 Group {
                     if let word = engine.activeWord {
                         LetterPadView(
                             word: word,
                             selection: engine.selection,
-                            swipeEnabled: settings.swipeInputEnabled,
+                            swipeEnabled: services.settings.swipeInputEnabled,
                             reducedMotion: reducedMotion,
                             onSelect: { id, method in _ = engine.select(tileID: id, via: method) },
                             onDeselect: { id in engine.deselect(tileID: id) },
@@ -96,36 +92,21 @@ private struct GameContent: View {
                         Color.clear
                     }
                 }
-                .frame(height: keyboardVisible ? 64 : 150)
+                .frame(height: 160)
 
-                ControlsRow(
-                    keyboardVisible: $keyboardVisible,
-                    keyboardEnabled: settings.keyboardInputEnabled,
-                    canClear: !engine.selection.isEmpty,
-                    onClear: { engine.clearSelection() }
-                )
+                // Kept well clear of the letter pad so it isn't hit by accident.
+                ClearButton(isEnabled: !engine.selection.isEmpty, onClear: { engine.clearSelection() })
+                    .padding(.top, 14)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
-
-            KeyboardInput(
-                isActive: Binding(
-                    get: { keyboardVisible && settings.keyboardInputEnabled && engine.status == .playing },
-                    set: { keyboardVisible = $0 }
-                ),
-                onInsert: { session.type($0) },
-                onDelete: { session.deleteBackward() }
-            )
-            .frame(width: 1, height: 1)
-            .opacity(0.01)
-            .allowsHitTesting(false)
 
             if engine.status == .paused {
                 PauseOverlay(onResume: { session.resume() }, onQuit: onQuit)
                     .transition(.opacity)
             }
 
-            if engine.status == .gameOver {
+            if session.showGameOver {
                 GameOverView(
                     engine: engine,
                     recorded: session.recorded,
@@ -136,6 +117,26 @@ private struct GameContent: View {
             }
         }
         .animation(.easeOut(duration: 0.25), value: engine.status)
+        .animation(.easeOut(duration: 0.3), value: session.showGameOver)
+    }
+}
+
+/// Fixed-height strip for PERFECT, LEVEL and combo banners, so they never
+/// cover the falling word.
+private struct BannerStrip: View {
+    let banner: Banner?
+
+    var body: some View {
+        ZStack {
+            if let banner {
+                BannerView(banner: banner)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    .id(banner.id)
+            }
+        }
+        .frame(height: 44)
+        .frame(maxWidth: .infinity)
+        .animation(.spring(response: 0.3, dampingFraction: 0.65), value: banner)
     }
 }
 
@@ -172,18 +173,17 @@ private struct BoardView: View {
                         .position(x: size.width / 2, y: Self.cardY(progress: burst.progress, cardHeight: 60, dangerY: dangerY))
                 }
 
-                if let banner = session.banner {
-                    BannerView(banner: banner)
-                        .position(x: size.width / 2, y: size.height * 0.3)
-                        .transition(.scale(scale: 0.6).combined(with: .opacity))
-                        .id(banner.id)
+                if let missed = session.revealedWord {
+                    MissedWordView(word: missed)
+                        .position(x: size.width / 2, y: dangerY - 44)
+                        .transition(.opacity.combined(with: .scale(scale: 1.2)))
                 }
             }
             .frame(width: size.width, height: size.height)
         }
         .modifier(ShakeEffect(amount: reducedMotion ? 0 : 12, shakes: 3, animatableData: CGFloat(session.boardShake)))
         .animation(.linear(duration: 0.4), value: session.boardShake)
-        .animation(.spring(response: 0.3, dampingFraction: 0.65), value: session.banner)
+        .animation(.easeOut(duration: 0.2), value: session.revealedWord)
     }
 
     static func tileSize(letters: Int, width: CGFloat) -> CGFloat {
@@ -195,6 +195,29 @@ private struct BoardView: View {
         let top = cardHeight / 2 + 4
         let bottom = dangerY - cardHeight / 2
         return top + (bottom - top) * CGFloat(progress)
+    }
+}
+
+/// Shows the answer to a word that reached the bottom.
+private struct MissedWordView: View {
+    let word: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text("THE WORD WAS")
+                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .tracking(2)
+                .foregroundStyle(.white.opacity(0.7))
+            Text("✕ \(word)")
+                .font(Theme.display(30))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .background(Theme.danger.opacity(0.85), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Theme.danger.opacity(0.7), radius: 14)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Missed. The word was \(word)")
     }
 }
 
@@ -308,75 +331,71 @@ private struct HUDView: View {
 
 // MARK: - Answer and controls
 
+/// The letters spelled so far. Tap a letter to take it back out.
 private struct AnswerView: View {
     let word: FallingWord?
-    let input: String
+    let selection: LetterSelection
     let shake: Int
     let reducedMotion: Bool
+    let onRemove: (Int) -> Void
 
     var body: some View {
         let count = word?.tiles.count ?? 0
-        let letters = Array(input)
-        let slot: CGFloat = count > 7 ? 32 : 40
+        let tiles = word?.tiles ?? []
+        let chosen = selection.tileIDs
+        let slot: CGFloat = count > 7 ? 34 : 42
         HStack(spacing: 6) {
             ForEach(0..<count, id: \.self) { index in
-                let letter = index < letters.count ? String(letters[index]) : ""
-                Text(letter)
-                    .font(.system(size: slot * 0.55, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .frame(width: slot, height: slot * 1.15)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(letter.isEmpty ? Theme.panel : Theme.accent.opacity(0.35))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(letter.isEmpty ? .white.opacity(0.15) : Theme.accent, lineWidth: 1.5)
-                    )
-                    .scaleEffect(letter.isEmpty ? 1 : 1.04)
-                    .animation(reducedMotion ? nil : .spring(response: 0.18, dampingFraction: 0.5), value: letter)
+                let tileID: Int? = index < chosen.count ? chosen[index] : nil
+                let letter = tileID.flatMap { id in tiles.first { $0.id == id } }.map { String($0.letter) } ?? ""
+                Button {
+                    if let tileID { onRemove(tileID) }
+                } label: {
+                    Text(letter)
+                        .font(.system(size: slot * 0.55, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(width: slot, height: slot * 1.15)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(letter.isEmpty ? Theme.panel : Theme.accent.opacity(0.35))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(letter.isEmpty ? .white.opacity(0.15) : Theme.accent, lineWidth: 1.5)
+                        )
+                        .scaleEffect(letter.isEmpty ? 1 : 1.04)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(tileID == nil)
+                .animation(reducedMotion ? nil : .spring(response: 0.18, dampingFraction: 0.5), value: letter)
+                .accessibilityLabel(letter.isEmpty ? "Empty" : letter)
+                .accessibilityHint(letter.isEmpty ? "" : "Removes this letter")
             }
         }
-        .frame(height: 50)
+        .frame(height: 52)
         .modifier(ShakeEffect(amount: reducedMotion ? 0 : 10, shakes: 3, animatableData: CGFloat(shake)))
         .animation(.linear(duration: 0.3), value: shake)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Answer")
-        .accessibilityValue(input.isEmpty ? "empty" : input)
     }
 }
 
-private struct ControlsRow: View {
-    @Binding var keyboardVisible: Bool
-    let keyboardEnabled: Bool
-    let canClear: Bool
+private struct ClearButton: View {
+    let isEnabled: Bool
     let onClear: () -> Void
 
     var body: some View {
-        HStack {
-            if keyboardEnabled {
-                Button {
-                    keyboardVisible.toggle()
-                } label: {
-                    Label(keyboardVisible ? "Hide keyboard" : "Keyboard", systemImage: keyboardVisible ? "keyboard.chevron.compact.down" : "keyboard")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Theme.panel, in: Capsule())
-                }
-            }
-            Spacer()
-            Button(action: onClear) {
-                Label("Clear", systemImage: "delete.left")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Theme.panel, in: Capsule())
-            }
-            .disabled(!canClear)
-            .opacity(canClear ? 1 : 0.4)
+        Button(action: onClear) {
+            Label("CLEAR", systemImage: "delete.left.fill")
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(width: 180, height: 50)
+                .background(Theme.panel, in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(0.2), lineWidth: 1))
+                .contentShape(Capsule())
         }
-        .foregroundStyle(.white)
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.4)
     }
 }
 

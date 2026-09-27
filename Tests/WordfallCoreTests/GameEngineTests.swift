@@ -123,6 +123,21 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(engine.lives, 3)
     }
 
+    func testHistoryRecordsEveryWord() {
+        let (engine, _) = dailyEngine(["STOP", "RATE", "CAT"])
+        engine.typeWord("TOPS")
+        engine.waitForWord()
+        for _ in 0..<300 where engine.activeWord?.word == "RATE" { engine.tick(0.1) }
+        engine.waitForWord()
+        engine.typeWord("ACT")
+        engine.tick(2)
+        XCTAssertEqual(engine.history.map(\.word), ["STOP", "RATE", "CAT"])
+        XCTAssertEqual(engine.history.map(\.answer), ["TOPS", nil, "ACT"])
+        XCTAssertEqual(engine.history.map(\.isSolved), [true, false, true])
+        XCTAssertGreaterThan(engine.history[0].points, 0)
+        XCTAssertEqual(engine.history[1].points, 0)
+    }
+
     func testFastSolveIsPerfect() {
         let (engine, _) = dailyEngine(["CAT"])
         engine.typeWord("CAT")

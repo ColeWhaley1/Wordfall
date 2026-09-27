@@ -21,12 +21,14 @@ final class GameEngine {
     private(set) var wordsMissed = 0
     private(set) var elapsedTime: TimeInterval = 0
     private(set) var lastSolve: SolveResult?
-    private(set) var outcomes: [WordOutcome] = []
+    /// Every word played so far, in order.
+    private(set) var history: [WordRecord] = []
     private(set) var solveTimes: [TimeInterval] = []
     private(set) var longestWord = ""
     private(set) var perfectCount = 0
     private(set) var inputCounts: [InputMethod: Int] = [:]
 
+    var outcomes: [WordOutcome] { history.map(\.outcome) }
     var combo: Int { comboEngine.count }
     var bestCombo: Int { comboEngine.best }
     var mode: GameMode { configuration.mode }
@@ -44,7 +46,7 @@ final class GameEngine {
     /// Words in the daily challenge that have been played (solved or missed).
     var dailyProgress: (played: Int, total: Int)? {
         guard case .daily(let challenge) = configuration.mode else { return nil }
-        return (outcomes.count, challenge.words.count)
+        return (history.count, challenge.words.count)
     }
 
     // MARK: Collaborators
@@ -203,7 +205,7 @@ final class GameEngine {
         score += breakdown.total
         wordsSolved += 1
         solveTimes.append(word.elapsed)
-        outcomes.append(breakdown.isPerfect ? .perfect : .solved)
+        history.append(WordRecord(id: word.id, word: word.word, answer: answer, outcome: breakdown.isPerfect ? .perfect : .solved, points: breakdown.total, time: word.elapsed))
         if breakdown.isPerfect { perfectCount += 1 }
         if answer.count > longestWord.count { longestWord = answer }
         lastSolve = result
@@ -229,7 +231,7 @@ final class GameEngine {
         comboEngine.reset()
         lives -= 1
         wordsMissed += 1
-        outcomes.append(.missed)
+        history.append(WordRecord(id: word.id, word: word.word, answer: nil, outcome: .missed, points: 0, time: word.elapsed))
         emit(.missed(word.word))
 
         if lives <= 0 {
@@ -254,7 +256,7 @@ final class GameEngine {
             let profile = DifficultyService.profile(for: level)
             let entry = generator.nextWord(for: profile, using: &rng)
             let scrambled = WordGenerator.scramble(entry.text, database: database, using: &rng)
-            word = FallingWord(word: entry.text, scrambled: scrambled, fallDuration: profile.fallDuration)
+            word = FallingWord(word: entry.text, scrambled: scrambled, fallDuration: profile.fallDuration(forLength: entry.length))
         case .daily(let challenge):
             guard dailyIndex < challenge.words.count else {
                 endGame()

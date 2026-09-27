@@ -13,7 +13,7 @@ struct SolveBurst: Identifiable, Equatable {
     let progress: Double
 }
 
-/// A short banner in the middle of the board.
+/// A short banner shown in the strip under the score, away from the falling word.
 struct Banner: Identifiable, Equatable {
     enum Style { case milestone, level, perfect, miss }
     let id = UUID()
@@ -38,6 +38,11 @@ final class GameSession {
     /// Incremented on every selection, for small tile pops.
     private(set) var selectionPulse = 0
     private(set) var missFlash = false
+    /// The answer to the word that was just missed, shown at the danger line.
+    private(set) var revealedWord: String?
+    /// The game-over screen appears a moment after the game ends, so the
+    /// player can see the final word they missed.
+    private(set) var showGameOver = false
     private(set) var recorded: RecordedGame?
 
     @ObservationIgnored private let services: AppServices
@@ -94,6 +99,8 @@ final class GameSession {
         banner = nil
         recorded = nil
         missFlash = false
+        revealedWord = nil
+        showGameOver = false
         engine.start()
         startClock()
     }
@@ -118,26 +125,17 @@ final class GameSession {
         displayLink = nil
     }
 
-    // MARK: Input
-
-    func type(_ text: String) {
-        for character in text where character.isLetter {
-            engine.type(character)
-        }
-    }
-
-    func deleteBackward() {
-        engine.deleteLast()
-    }
-
     // MARK: Events → feedback
 
     private func handle(_ event: GameEvent) {
         let haptics = services.haptics
         let sound = services.sound
         switch event {
-        case .started, .spawned:
+        case .started:
             break
+
+        case .spawned:
+            revealedWord = nil
 
         case .letterSelected:
             selectionPulse += 1
@@ -185,7 +183,8 @@ final class GameSession {
             boardShake += 1
             haptics.missed()
             sound.play(.thud)
-            show(Banner(text: "✕ MISS · \(word)", style: .miss))
+            revealedWord = word
+            show(Banner(text: "✕ MISS", style: .miss))
             missFlash = true
             Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(350))
@@ -201,6 +200,13 @@ final class GameSession {
             haptics.missed()
             if let modelContext, recorded == nil {
                 recorded = StatsRecorder.record(engine, in: modelContext)
+            }
+            let endedOnMiss = engine.history.last?.outcome == .missed
+            let engineAtEnd = engine
+            Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(endedOnMiss ? 2000 : 700))
+                guard let self, self.engine === engineAtEnd else { return }
+                self.showGameOver = true
             }
         }
     }

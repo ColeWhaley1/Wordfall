@@ -6,9 +6,10 @@ enum DailyChallengeGenerator {
     /// Word lengths in order: a gentle ramp from 4 to 7 letters.
     static let lengthCurve = [4, 4, 5, 5, 5, 6, 6, 6, 7, 7]
     static let lives = 3
-    static let baseFallDuration: TimeInterval = 6.5
+    /// A 4-letter word falls in 6.4s, a 7-letter word in 10s.
+    static let speed = 0.8
     /// Only familiar words appear in the daily puzzle.
-    static let minFrequency = 3.8 / 7.0
+    static let minFrequency = 4.0 / 7.0
     /// Bump when the generation rules change so old seeds aren't reinterpreted.
     static let version = "v1"
 
@@ -61,7 +62,7 @@ enum DailyChallengeGenerator {
             seed: seed,
             words: words,
             lives: lives,
-            baseFallDuration: baseFallDuration
+            speed: speed
         )
     }
 }

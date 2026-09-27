@@ -10,7 +10,6 @@ struct SettingsView: View {
                 Toggle("Haptics", isOn: $settings.hapticsEnabled)
                 Toggle("Sound", isOn: $settings.soundEnabled)
                 Toggle("Swipe Input", isOn: $settings.swipeInputEnabled)
-                Toggle("Keyboard Input", isOn: $settings.keyboardInputEnabled)
             }
             Section {
                 Toggle("Reduced Motion", isOn: $settings.reducedMotion)

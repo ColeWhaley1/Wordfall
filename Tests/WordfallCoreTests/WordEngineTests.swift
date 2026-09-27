@@ -90,7 +90,7 @@ final class WordEngineTests: XCTestCase {
     func testGeneratorFallsBackWhenNothingMatches() {
         var generator = WordGenerator(database: TestSupport.tiny)
         var rng = SeededRandom(seed: 1)
-        let profile = DifficultyProfile(level: 99, lengths: 12...12, maxDifficulty: 1, minFrequency: 1, fallDuration: 5, maxActiveWords: 1)
+        let profile = DifficultyProfile(level: 99, lengths: 12...12, maxDifficulty: 1, minFrequency: 1, speed: 1, maxActiveWords: 1)
         XCTAssertFalse(generator.nextWord(for: profile, using: &rng).text.isEmpty)
     }
 
@@ -102,7 +102,8 @@ final class WordEngineTests: XCTestCase {
             let profile = DifficultyService.profile(for: level)
             XCTAssertGreaterThanOrEqual(profile.lengths.upperBound, previous.lengths.upperBound, "level \(level)")
             XCTAssertLessThanOrEqual(profile.lengths.upperBound, 9)
-            XCTAssertGreaterThanOrEqual(profile.fallDuration, 3.0, "level \(level)")
+            XCTAssertLessThanOrEqual(profile.speed, previous.speed, "level \(level)")
+            XCTAssertGreaterThanOrEqual(profile.fallDuration(forLength: profile.lengths.lowerBound), 5.0, "level \(level)")
             XCTAssertFalse(TestSupport.database.playableWords(length: profile.lengths.lowerBound).isEmpty)
             XCTAssertEqual(profile.maxActiveWords, 1)
             previous = profile
@@ -110,6 +111,27 @@ final class WordEngineTests: XCTestCase {
         XCTAssertEqual(DifficultyService.level(forWordsSolved: 0), 1)
         XCTAssertEqual(DifficultyService.level(forWordsSolved: 4), 1)
         XCTAssertEqual(DifficultyService.level(forWordsSolved: 5), 2)
+    }
+
+    func testLongerWordsFallMoreSlowly() {
+        let profile = DifficultyService.profile(for: 1)
+        XCTAssertEqual(profile.fallDuration(forLength: 3), 6.5, accuracy: 0.001)
+        XCTAssertEqual(profile.fallDuration(forLength: 9), 15.5, accuracy: 0.001)
+        let later = DifficultyService.profile(for: 20)
+        XCTAssertLessThan(later.fallDuration(forLength: 6), profile.fallDuration(forLength: 6))
+        XCTAssertGreaterThan(later.fallDuration(forLength: 9), later.fallDuration(forLength: 6))
+    }
+
+    func testEarlyLevelsOnlyUseEverydayWords() {
+        let generator = WordGenerator(database: TestSupport.database)
+        let early = Set(generator.candidates(for: DifficultyService.profile(for: 1)).map(\.text))
+        for word in ["CAT", "DOG", "SUN", "MAP", "CAR", "RUN"] {
+            XCTAssertTrue(early.contains(word), word)
+        }
+        let first5 = (1...5).flatMap { generator.candidates(for: DifficultyService.profile(for: $0)).map(\.text) }
+        for word in ["ITER", "TARE", "TOR", "ODE", "ERE", "BOB", "RICK"] {
+            XCTAssertFalse(first5.contains(word), word)
+        }
     }
 
     func testEveryLevelHasEnoughWords() {

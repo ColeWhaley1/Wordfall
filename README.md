@@ -18,13 +18,18 @@ backend, no accounts, no API.
 ## What's in this version
 
 - **Endless mode**: one falling word at a time, 3 lives, level up every 5
-  words. The difficulty curve alternates between faster falls and longer
-  words (3 letters at level 1 up to 9 letters later), and rare words are kept
-  out of early levels.
-- **Three input methods at once**: the system keyboard, tapping tiles, and
-  swiping across tiles with a forgiving hit area. They all feed the same
-  selection, so you can tap R and then type ATE. Sliding back over a letter
-  during a swipe undoes it; a full-length wrong answer shakes and clears.
+  words. Fall time scales with word length (a 3-letter word falls in 6.5s at
+  level 1, a 9-letter word in 15.5s) and everything speeds up a little each
+  level. Word length grows in steps from 3 letters up to 9. Levels 1–5 only
+  use everyday words, and names and abbreviations are never picked.
+- **Missed words** are revealed at the danger line, including the one that
+  ends the game, and the game-over screen lists every word with whether you
+  got it.
+- **Tap and swipe input**: tap tiles, or swipe across them with a forgiving
+  hit area, and mix the two freely. Tap a letter in the answer (or its tile)
+  to take it back out, slide back over a letter mid-swipe to undo it, or hit
+  Clear. A full-length wrong answer shakes and clears. (The system keyboard
+  was dropped after playtesting; the engine still supports typed input.)
 - **Scoring**: length-based base score × speed bonus × combo multiplier ×
   level multiplier, plus a +25% PERFECT bonus for solving in the first 40% of
   the fall. Combo milestones at 5 (WORD CHAIN), 10 (UNSTOPPABLE) and every 10
@@ -38,7 +43,7 @@ backend, no accounts, no API.
   streak.
 - **Stats** (SwiftData): high score, best combo, best level, totals, fastest
   solve, longest word, accuracy, recent games.
-- **Settings**: haptics, sound, swipe input, keyboard input, reduced motion
+- **Settings**: haptics, sound, swipe input, reduced motion
   (also follows the iOS Reduce Motion setting).
 
 Not built yet, per the plan's "don't build initially" list: multiple
@@ -87,7 +92,7 @@ every push to `main`.
 ## Word list
 
 `Wordfall/Resources/words.json` holds about 32,000 accepted answers, of which
-about 12,300 are "playable" (eligible to fall). Accepted words are checked
+about 9,800 are "playable" (eligible to fall). Accepted words are checked
 against two dictionaries plus word frequency data; playable words are
 additionally common, in both dictionaries, and pass a profanity filter. Each
 entry has a length, a 1–5 difficulty, a normalised frequency and a `common`
@@ -103,7 +108,7 @@ Changing the word list changes daily puzzles, so bump
 
 ## Tuning
 
-- Difficulty curve: `DifficultyService` (`Wordfall/Engine/Words/DifficultyService.swift`)
+- Difficulty curve and fall times: `DifficultyService` (`Wordfall/Engine/Words/DifficultyService.swift`)
 - Points and bonuses: `ScoreEngine`
 - Lives and pacing between words: `GameConfiguration`
 - Daily length curve and fall speed: `DailyChallengeGenerator`

@@ -43,6 +43,19 @@ struct GameOverView: View {
                     }
                     .padding(.horizontal, 24)
 
+                    if !engine.history.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("WORDS")
+                                .font(.system(size: 13, weight: .heavy, design: .rounded))
+                                .tracking(2)
+                                .foregroundStyle(.white.opacity(0.55))
+                            ForEach(engine.history) { record in
+                                WordRecordRow(record: record)
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                    }
+
                     if case .daily(let challenge) = engine.mode {
                         let share = ShareResult.text(
                             number: challenge.number,
@@ -110,6 +123,45 @@ struct StatTile: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// One line of the end-of-game word list.
+private struct WordRecordRow: View {
+    let record: WordRecord
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: record.isSolved ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(record.isSolved ? Theme.success : Theme.danger)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(record.word)
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                if let answer = record.answer, answer != record.word {
+                    Text("solved as \(answer)")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(record.isSolved ? "+\(NumberText.grouped(record.points))" : "MISS")
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundStyle(record.isSolved ? Theme.gold : Theme.danger)
+                if record.isSolved {
+                    Text(String(format: "%.1fs", record.time))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.5))
+                        .monospacedDigit()
+                }
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }

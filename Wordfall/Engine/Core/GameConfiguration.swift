@@ -22,8 +22,8 @@ struct GameConfiguration: Equatable, Sendable {
     var startingLives = 3
     /// Pause after a solve before the next word spawns; covers the burst animation.
     var delayAfterSolve: TimeInterval = 0.35
-    /// Pause after a miss, long enough to register the crash.
-    var delayAfterMiss: TimeInterval = 0.7
+    /// Pause after a miss, long enough to read the answer that was missed.
+    var delayAfterMiss: TimeInterval = 1.4
     /// Pause before the very first word.
     var initialDelay: TimeInterval = 0.6
     /// Progress at which the word enters the danger zone.

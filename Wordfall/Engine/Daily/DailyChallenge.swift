@@ -15,11 +15,12 @@ struct DailyChallenge: Equatable, Hashable, Sendable {
     let seed: UInt64
     let words: [DailyWord]
     let lives: Int
-    /// Base fall time; longer words get a little more.
-    let baseFallDuration: TimeInterval
+    /// Fall speed multiplier (see `DifficultyService.fallDuration`).
+    let speed: Double
 
+    /// Longer words fall more slowly, as in endless mode.
     func fallDuration(forWordAt index: Int) -> TimeInterval {
-        guard words.indices.contains(index) else { return baseFallDuration }
-        return baseFallDuration + Double(max(0, words[index].word.count - 4)) * 0.6
+        let length = words.indices.contains(index) ? words[index].word.count : 5
+        return DifficultyService.fallDuration(length: length, speed: speed)
     }
 }
