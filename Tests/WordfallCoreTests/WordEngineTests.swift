@@ -116,10 +116,48 @@ final class WordEngineTests: XCTestCase {
     func testLongerWordsFallMoreSlowly() {
         let profile = DifficultyService.profile(for: 1)
         XCTAssertEqual(profile.fallDuration(forLength: 3), 6.5, accuracy: 0.001)
-        XCTAssertEqual(profile.fallDuration(forLength: 9), 15.5, accuracy: 0.001)
+        XCTAssertEqual(profile.fallDuration(forLength: 9), 28.1, accuracy: 0.001)
         let later = DifficultyService.profile(for: 20)
         XCTAssertLessThan(later.fallDuration(forLength: 6), profile.fallDuration(forLength: 6))
         XCTAssertGreaterThan(later.fallDuration(forLength: 9), later.fallDuration(forLength: 6))
+        // Long words keep plenty of time even at top speed.
+        XCTAssertGreaterThan(later.fallDuration(forLength: 7), 12)
+    }
+
+    func testEachExtraLetterAddsMoreTimeThanTheLast() {
+        let profile = DifficultyService.profile(for: 1)
+        var previousGap = 0.0
+        for length in 4...9 {
+            let gap = profile.fallDuration(forLength: length) - profile.fallDuration(forLength: length - 1)
+            XCTAssertGreaterThan(gap, previousGap, "length \(length)")
+            previousGap = gap
+        }
+    }
+
+    func testEasierDifficultiesGiveMoreTimeAndEasierWords() {
+        for level in [1, 5, 12, 25] {
+            let easy = DifficultyService.profile(for: level, difficulty: .easy)
+            let normal = DifficultyService.profile(for: level, difficulty: .normal)
+            let hard = DifficultyService.profile(for: level, difficulty: .hard)
+            let expert = DifficultyService.profile(for: level, difficulty: .expert)
+            XCTAssertGreaterThan(easy.fallDuration(forLength: 5), normal.fallDuration(forLength: 5), "level \(level)")
+            XCTAssertGreaterThan(normal.fallDuration(forLength: 5), hard.fallDuration(forLength: 5), "level \(level)")
+            XCTAssertGreaterThan(hard.fallDuration(forLength: 5), expert.fallDuration(forLength: 5), "level \(level)")
+            XCTAssertLessThanOrEqual(easy.lengths.upperBound, 6)
+            XCTAssertLessThanOrEqual(easy.maxDifficulty, normal.maxDifficulty)
+            XCTAssertGreaterThanOrEqual(hard.lengths.upperBound, normal.lengths.upperBound)
+            XCTAssertGreaterThanOrEqual(expert.lengths.upperBound, hard.lengths.upperBound)
+        }
+    }
+
+    func testEveryDifficultyHasEnoughWords() {
+        let generator = WordGenerator(database: TestSupport.database)
+        for difficulty in GameDifficulty.allCases {
+            for level in 1...40 {
+                let count = generator.candidates(for: DifficultyService.profile(for: level, difficulty: difficulty)).count
+                XCTAssertGreaterThan(count, 100, "\(difficulty) level \(level) has only \(count) words")
+            }
+        }
     }
 
     func testEarlyLevelsOnlyUseEverydayWords() {

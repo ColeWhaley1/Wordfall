@@ -8,15 +8,18 @@ struct FallingWordView: View {
     let reducedMotion: Bool
     let dangerThreshold: Double
 
+    @Environment(\.cosmetics) private var cosmetics
+
     private var inDanger: Bool { word.progress >= dangerThreshold }
 
     var body: some View {
         let progress = word.progress
+        let theme = cosmetics.letters
         HStack(spacing: tileSize * 0.14) {
             ForEach(word.tiles) { tile in
                 Text(String(tile.letter))
                     .font(.system(size: tileSize * 0.62, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.text.color)
                     .frame(width: tileSize, height: tileSize * 1.1)
                     .offset(y: reducedMotion ? 0 : sin(progress * 18 + Double(tile.id) * 0.9) * 2.5)
             }
@@ -25,13 +28,13 @@ struct FallingWordView: View {
         .padding(.vertical, tileSize * 0.35)
         .background(
             RoundedRectangle(cornerRadius: tileSize * 0.45, style: .continuous)
-                .fill(Theme.cardGradient)
+                .fill(theme.cardGradient)
         )
         .overlay(
             RoundedRectangle(cornerRadius: tileSize * 0.45, style: .continuous)
-                .strokeBorder(inDanger ? Theme.danger : .white.opacity(0.35), lineWidth: inDanger ? 3 : 1.5)
+                .strokeBorder(inDanger ? Theme.danger : .white.opacity(theme.outlineOpacity), lineWidth: inDanger ? 3 : 1.5)
         )
-        .shadow(color: (inDanger ? Theme.danger : Theme.cardTop).opacity(0.7), radius: inDanger ? 18 : 12)
+        .shadow(color: (inDanger ? Theme.danger : theme.cardTop.color).opacity(0.7), radius: inDanger ? 18 : 12)
         .rotationEffect(.degrees(reducedMotion ? 0 : sin(progress * 7) * 2.5))
         .offset(x: reducedMotion || !inDanger ? 0 : sin(progress * 260) * 3)
         .accessibilityElement(children: .ignore)

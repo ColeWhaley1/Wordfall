@@ -7,7 +7,7 @@ struct StatsView: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            ThemedBackground()
             ScrollView {
                 VStack(spacing: 20) {
                     Text("YOUR STATS")

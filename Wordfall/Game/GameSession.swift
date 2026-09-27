@@ -43,12 +43,17 @@ final class GameSession {
     /// The game-over screen appears a moment after the game ends, so the
     /// player can see the final word they missed.
     private(set) var showGameOver = false
+    /// "Out of lives: watch an ad for an extra heart?" is on screen.
+    private(set) var showExtraHeartOffer = false
+    /// A rewarded or interstitial ad is on screen.
+    private(set) var isShowingAd = false
     private(set) var recorded: RecordedGame?
 
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private var displayLink: DisplayLink?
     @ObservationIgnored private var modelContext: ModelContext?
     @ObservationIgnored private var bannerTask: Task<Void, Never>?
+    @ObservationIgnored private var demoTask: Task<Void, Never>?
 
     init(configuration: GameConfiguration, services: AppServices) {
         self.configuration = configuration
@@ -67,14 +72,30 @@ final class GameSession {
         services.sound.isEnabled = services.settings.soundEnabled
         services.haptics.prepare()
         if engine.status == .ready {
-            engine.start()
+            startRun()
         }
         startClock()
+        #if DEBUG
+        if DemoMode.autoplay, demoTask == nil {
+            demoTask = Task { [weak self] in
+                guard let self else { return }
+                await DemoMode.play(self)
+            }
+        }
+        #endif
     }
 
     func end() {
+        // A full-screen ad over the game also triggers onDisappear; the game isn't over.
+        guard !isShowingAd else { return }
         stopClock()
         bannerTask?.cancel()
+        demoTask?.cancel()
+        demoTask = nil
+        // Leaving while the extra-heart offer is up still counts the game.
+        if engine.status == .gameOver {
+            recordIfNeeded()
+        }
     }
 
     func pause() {
@@ -89,9 +110,16 @@ final class GameSession {
         engine.status == .paused ? resume() : pause()
     }
 
-    /// Starts a fresh endless game on the same screen.
+    /// The game-over screen can offer Play Again: always in endless, and for
+    /// the daily only in development builds.
+    var canPlayAgain: Bool { !isDaily || DevOptions.allowsDailyReplay }
+
+    /// Starts a fresh game with the same settings on the same screen.
     func playAgain() {
-        guard !isDaily else { return }
+        guard canPlayAgain else { return }
+        if case .daily(let challenge) = configuration.mode, let modelContext {
+            DevOptions.forgetDailyResult(dateKey: challenge.dateKey, in: modelContext)
+        }
         engine.onEvent = nil
         engine = GameEngine(database: services.database, configuration: configuration)
         attach(engine)
@@ -101,8 +129,106 @@ final class GameSession {
         missFlash = false
         revealedWord = nil
         showGameOver = false
-        engine.start()
+        showExtraHeartOffer = false
+        startRun()
         startClock()
+    }
+
+    private func startRun() {
+        services.adPolicy.gameStarted(isDaily: isDaily)
+        services.ads.preload()
+        Analytics.log(.gameStarted, ["mode": isDaily ? "daily" : "endless", "difficulty": engine.difficulty.rawValue])
+        engine.start()
+    }
+
+    // MARK: Leaving the results
+
+    /// Runs `action` (home or play again), first showing an interstitial if
+    /// the ad policy allows one and it's loaded.
+    func leaveResults(then action: @escaping () -> Void) {
+        guard !isShowingAd else { return }
+        let policy = services.adPolicy
+        guard policy.shouldShowInterstitial(), services.ads.isInterstitialReady else {
+            action()
+            return
+        }
+        Analytics.log(.interstitialAvailable)
+        isShowingAd = true
+        services.sound.isEnabled = false
+        services.ads.showInterstitial { [weak self] shown in
+            guard let self else { return }
+            self.isShowingAd = false
+            self.services.sound.isEnabled = self.services.settings.soundEnabled
+            if shown {
+                policy.interstitialShown()
+                Analytics.log(.interstitialShown)
+            } else {
+                Analytics.log(.interstitialFailed)
+            }
+            action()
+        }
+    }
+
+    // MARK: Extra heart
+
+    /// Out of lives: an extra heart is offered only if the rules allow one
+    /// and an ad is already loaded, so the player never waits for an ad.
+    private var canOfferExtraHeart: Bool {
+        engine.canGrantExtraHeart && services.adPolicy.canUseRewardedForExtraLife && services.ads.isRewardedAdReady
+    }
+
+    /// Plays the rewarded ad; if it's watched to the end, play resumes with one heart.
+    func watchAdForExtraHeart() {
+        guard showExtraHeartOffer, !isShowingAd else { return }
+        Analytics.log(.rewardedAdStarted)
+        isShowingAd = true
+        services.sound.isEnabled = false
+        services.ads.showRewarded { [weak self] outcome in
+            guard let self else { return }
+            self.isShowingAd = false
+            self.services.sound.isEnabled = self.services.settings.soundEnabled
+            if outcome != .failed {
+                self.services.adPolicy.rewardedAdShown()
+            }
+            switch outcome {
+            case .earned:
+                Analytics.log(.rewardedAdCompleted)
+                guard self.engine.grantExtraHeart() else { return self.finishWithResults() }
+                Analytics.log(.rewardedExtraLifeGranted)
+                self.showExtraHeartOffer = false
+                self.startClock()
+            case .closedEarly:
+                self.finishWithResults()
+            case .failed:
+                Analytics.log(.rewardedAdFailed)
+                self.finishWithResults()
+            }
+        }
+    }
+
+    /// Turns the offer down and shows the normal game-over screen.
+    func declineExtraHeart() {
+        guard showExtraHeartOffer, !isShowingAd else { return }
+        finishWithResults()
+    }
+
+    private func finishWithResults() {
+        showExtraHeartOffer = false
+        revealedWord = nil
+        recordIfNeeded()
+        showGameOver = true
+    }
+
+    /// The run is over for good: save it once, and count it for the ad policy.
+    private func recordIfNeeded() {
+        guard let modelContext, recorded == nil else { return }
+        recorded = StatsRecorder.record(engine, in: modelContext)
+        services.adPolicy.gameEnded()
+        let finishedDaily = isDaily && engine.lives > 0
+        Analytics.log(finishedDaily ? .gameCompleted : .gameOver, ["score": "\(engine.score)"])
+        if services.adPolicy.rewardedAdsUsedThisRun > 0 {
+            Analytics.log(.gameOverAfterRewarded, ["score": "\(engine.score)"])
+        }
     }
 
     private func attach(_ engine: GameEngine) {
@@ -198,16 +324,25 @@ final class GameSession {
         case .gameOver:
             stopClock()
             haptics.missed()
-            if let modelContext, recorded == nil {
-                recorded = StatsRecorder.record(engine, in: modelContext)
-            }
             let endedOnMiss = engine.history.last?.outcome == .missed
             let engineAtEnd = engine
             Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(endedOnMiss ? 2000 : 700))
-                guard let self, self.engine === engineAtEnd else { return }
-                self.showGameOver = true
+                guard let self, self.engine === engineAtEnd, self.engine.status == .gameOver else { return }
+                if self.canOfferExtraHeart {
+                    Analytics.log(.rewardedAdAvailable)
+                    self.revealedWord = nil
+                    self.showExtraHeartOffer = true
+                } else {
+                    self.finishWithResults()
+                }
             }
+
+        case .extraHeart:
+            revealedWord = nil
+            sound.play(.levelUp)
+            haptics.milestone()
+            show(Banner(text: "+1 ❤️  KEEP GOING", style: .level))
         }
     }
 

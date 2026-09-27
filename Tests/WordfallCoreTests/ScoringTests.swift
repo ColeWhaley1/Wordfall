@@ -30,6 +30,23 @@ final class ScoringTests: XCTestCase {
         XCTAssertEqual(fast.total, 175)
     }
 
+    func testEasierDifficultiesScoreFarLess() {
+        let easy = ScoreEngine.score(length: 5, fraction: 0.5, combo: 1, level: 1, difficulty: .easy).total
+        let normal = ScoreEngine.score(length: 5, fraction: 0.5, combo: 1, level: 1).total
+        let hard = ScoreEngine.score(length: 5, fraction: 0.5, combo: 1, level: 1, difficulty: .hard).total
+        let expert = ScoreEngine.score(length: 5, fraction: 0.5, combo: 1, level: 1, difficulty: .expert).total
+        XCTAssertLessThan(Double(easy), Double(normal) * 0.5)
+        XCTAssertLessThan(normal, hard)
+        XCTAssertLessThan(hard, expert)
+    }
+
+    func testCoinsFollowPoints() {
+        XCTAssertEqual(CoinRules.coins(forScore: 0), 0)
+        XCTAssertEqual(CoinRules.coins(forScore: 19), 0)
+        XCTAssertEqual(CoinRules.coins(forScore: 2_000), 100)
+        XCTAssertEqual(CoinRules.coins(forScore: 2_000, completedDaily: true), 100 + CoinRules.dailyCompletionBonus)
+    }
+
     func testComboMilestones() {
         var combo = ComboEngine()
         var milestones: [ComboMilestone] = []

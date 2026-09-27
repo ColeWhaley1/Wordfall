@@ -23,7 +23,7 @@ enum ShareResult {
     static func text(number: Int, outcomes: [WordOutcome], total: Int, score: Int, bestCombo: Int) -> String {
         let solved = outcomes.filter { $0 != .missed }.count
         var lines = [
-            "Wordfall Daily #\(number)",
+            "Word Fallout Daily #\(number)",
             "\(solved)/\(total)",
             "",
             grid(outcomes: outcomes, total: total),

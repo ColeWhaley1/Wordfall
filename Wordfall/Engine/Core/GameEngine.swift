@@ -27,11 +27,30 @@ final class GameEngine {
     private(set) var longestWord = ""
     private(set) var perfectCount = 0
     private(set) var inputCounts: [InputMethod: Int] = [:]
+    /// Extra hearts granted after running out of lives this game.
+    private(set) var extraHeartsUsed = 0
 
     var outcomes: [WordOutcome] { history.map(\.outcome) }
     var combo: Int { comboEngine.count }
     var bestCombo: Int { comboEngine.best }
     var mode: GameMode { configuration.mode }
+    var difficulty: GameDifficulty { configuration.difficulty }
+
+    /// How far into the game the player is, in levels, counting part-way
+    /// through the current one and how hard the words are. 0 at the start of
+    /// an easy or normal game; the background fades as this grows.
+    var intensity: Double {
+        switch mode {
+        case .endless:
+            let intoLevel = Double(wordsSolved % DifficultyService.wordsPerLevel) / Double(DifficultyService.wordsPerLevel)
+            return Double(level - 1 + difficulty.wordLevelOffset) + intoLevel
+        case .daily(let challenge):
+            // A daily run sweeps about eight levels' worth, starting further
+            // along on harder days.
+            let played = Double(history.count) / Double(max(challenge.words.count, 1))
+            return Double(difficulty.wordLevelOffset) + played * 8
+        }
+    }
 
     /// Letters currently spelled, in order.
     var currentInput: String {
@@ -91,6 +110,25 @@ final class GameEngine {
     func resume() {
         guard status == .paused else { return }
         status = .playing
+    }
+
+    /// True when the game just ended by running out of lives and the player
+    /// may still get an extra heart to keep going.
+    var canGrantExtraHeart: Bool {
+        status == .gameOver && lives <= 0 && extraHeartsUsed < configuration.maxExtraHearts
+    }
+
+    /// Brings a game that ran out of lives back with one heart. The score,
+    /// level, history and time carry on; the combo was already lost to the miss.
+    @discardableResult
+    func grantExtraHeart() -> Bool {
+        guard canGrantExtraHeart else { return false }
+        extraHeartsUsed += 1
+        lives = 1
+        status = .playing
+        spawnCountdown = configuration.initialDelay
+        emit(.extraHeart)
+        return true
     }
 
     /// Advances the game by `deltaTime` seconds.
@@ -190,7 +228,7 @@ final class GameEngine {
     private func solve(_ word: FallingWord, answer: String) {
         let milestone = comboEngine.registerSolve()
         let fraction = word.progress
-        let breakdown = ScoreEngine.score(length: word.word.count, fraction: fraction, combo: comboEngine.count, level: level)
+        let breakdown = ScoreEngine.score(length: word.word.count, fraction: fraction, combo: comboEngine.count, level: level, difficulty: difficulty)
         let result = SolveResult(
             word: word.word,
             answer: answer,
@@ -253,7 +291,7 @@ final class GameEngine {
         let word: FallingWord
         switch mode {
         case .endless:
-            let profile = DifficultyService.profile(for: level)
+            let profile = DifficultyService.profile(for: level, difficulty: difficulty)
             let entry = generator.nextWord(for: profile, using: &rng)
             let scrambled = WordGenerator.scramble(entry.text, database: database, using: &rng)
             word = FallingWord(word: entry.text, scrambled: scrambled, fallDuration: profile.fallDuration(forLength: entry.length))

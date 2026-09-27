@@ -9,6 +9,8 @@ final class AppServices {
     let settings: GameSettings
     let haptics: HapticsManager
     let sound: SoundManager
+    let ads: AdManager
+    let adPolicy: AdPolicy
 
     init() {
         do {
@@ -19,6 +21,8 @@ final class AppServices {
         settings = GameSettings()
         haptics = HapticsManager()
         sound = SoundManager()
+        ads = AdManager()
+        adPolicy = AdPolicy()
     }
 
     func todaysChallenge(now: Date = .now) -> DailyChallenge {

@@ -10,6 +10,7 @@ final class GameSettings {
         static let haptics = "settings.hapticsEnabled"
         static let swipe = "settings.swipeInputEnabled"
         static let reducedMotion = "settings.reducedMotion"
+        static let difficulty = "settings.difficulty"
     }
 
     private let defaults: UserDefaults
@@ -18,6 +19,8 @@ final class GameSettings {
     var hapticsEnabled: Bool { didSet { defaults.set(hapticsEnabled, forKey: Key.haptics) } }
     var swipeInputEnabled: Bool { didSet { defaults.set(swipeInputEnabled, forKey: Key.swipe) } }
     var reducedMotion: Bool { didSet { defaults.set(reducedMotion, forKey: Key.reducedMotion) } }
+    /// Endless difficulty, chosen on the home screen.
+    var difficulty: GameDifficulty { didSet { defaults.set(difficulty.rawValue, forKey: Key.difficulty) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -31,5 +34,6 @@ final class GameSettings {
         hapticsEnabled = defaults.bool(forKey: Key.haptics)
         swipeInputEnabled = defaults.bool(forKey: Key.swipe)
         reducedMotion = defaults.bool(forKey: Key.reducedMotion)
+        difficulty = defaults.string(forKey: Key.difficulty).flatMap(GameDifficulty.init(rawValue:)) ?? .normal
     }
 }

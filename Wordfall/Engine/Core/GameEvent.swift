@@ -54,4 +54,6 @@ enum GameEvent: Equatable, Sendable {
     case missed(String)
     case levelUp(Int)
     case gameOver
+    /// The player got an extra heart after running out and play resumed.
+    case extraHeart
 }

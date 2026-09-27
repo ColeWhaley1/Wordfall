@@ -160,6 +160,71 @@ final class GameEngineTests: XCTestCase {
         XCTAssertEqual(engine.lastSolve?.milestone, .wordChain)
     }
 
+    func testIntensityGrowsWithProgressAndDifficulty() {
+        let engine = GameEngine(database: TestSupport.tiny, seed: 11)
+        engine.start()
+        XCTAssertEqual(engine.intensity, 0)
+        var previous = engine.intensity
+        for _ in 0..<7 {
+            engine.waitForWord()
+            engine.typeWord(engine.activeWord!.word)
+            XCTAssertGreaterThan(engine.intensity, previous)
+            previous = engine.intensity
+        }
+        let hard = GameEngine(database: TestSupport.tiny, configuration: .endless(.hard), seed: 11)
+        XCTAssertGreaterThan(hard.intensity, 0)
+    }
+
+    func testDifficultyScalesPoints() {
+        func firstSolve(_ difficulty: GameDifficulty) -> Int {
+            let engine = GameEngine(database: TestSupport.tiny, configuration: .endless(difficulty), seed: 11)
+            engine.start()
+            engine.waitForWord()
+            engine.typeWord(engine.activeWord!.word)
+            return engine.lastSolve!.points
+        }
+        XCTAssertLessThan(firstSolve(.easy), firstSolve(.normal))
+        XCTAssertLessThan(firstSolve(.normal), firstSolve(.expert))
+    }
+
+    func testExtraHeartContinuesAnEndlessGameOnce() {
+        let engine = GameEngine(database: TestSupport.tiny, seed: 3)
+        let log = EventLog()
+        engine.onEvent = { log.events.append($0) }
+        engine.start()
+        XCTAssertFalse(engine.canGrantExtraHeart)
+        engine.waitForWord()
+        engine.typeWord(engine.activeWord!.word)
+        let scoreBefore = engine.score
+
+        func loseAllLives() {
+            while engine.status == .playing { engine.tick(0.25) }
+        }
+        loseAllLives()
+        XCTAssertEqual(engine.status, .gameOver)
+        XCTAssertTrue(engine.canGrantExtraHeart)
+
+        XCTAssertTrue(engine.grantExtraHeart())
+        XCTAssertEqual(engine.status, .playing)
+        XCTAssertEqual(engine.lives, 1)
+        XCTAssertEqual(engine.score, scoreBefore)
+        XCTAssertTrue(log.events.contains(.extraHeart))
+        engine.waitForWord()
+        XCTAssertNotNil(engine.activeWord)
+
+        loseAllLives()
+        XCTAssertEqual(engine.status, .gameOver)
+        XCTAssertFalse(engine.canGrantExtraHeart, "only one extra heart per game")
+        XCTAssertFalse(engine.grantExtraHeart())
+    }
+
+    func testDailyNeverOffersAnExtraHeart() {
+        let (engine, _) = dailyEngine(["stop", "rate", "cat"], lives: 1)
+        while engine.status == .playing { engine.tick(0.25) }
+        XCTAssertEqual(engine.status, .gameOver)
+        XCTAssertFalse(engine.canGrantExtraHeart)
+    }
+
     func testPauseFreezesTheWord() {
         let (engine, _) = dailyEngine(["STOP"])
         let before = engine.activeWord!.elapsed

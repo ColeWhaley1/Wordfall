@@ -5,6 +5,7 @@ import SwiftUI
 struct DailyView: View {
     @Environment(AppServices.self) private var services
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.cosmetics) private var cosmetics
     @Query private var results: [DailyResult]
     @Query private var stats: [PlayerStats]
 
@@ -13,7 +14,7 @@ struct DailyView: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            ThemedBackground()
             ScrollView {
                 VStack(spacing: 20) {
                     Text("DAILY")
@@ -50,17 +51,22 @@ struct DailyView: View {
         .fullScreenCover(item: $launch) { launch in
             GameView(configuration: launch.configuration)
                 .environment(services)
+                .environment(\.cosmetics, cosmetics)
                 .modelContext(modelContext)
         }
     }
 
     private func unplayedCard(_ challenge: DailyChallenge) -> some View {
         VStack(spacing: 18) {
+            Text("TODAY IS \(challenge.difficulty.title)")
+                .font(Theme.display(22))
+                .foregroundStyle(dailyColor(challenge.difficulty))
             VStack(alignment: .leading, spacing: 10) {
-                Label("\(challenge.words.count) words, 4 to 7 letters", systemImage: "textformat.abc")
+                Label(wordsText(challenge), systemImage: "textformat.abc")
                 Label("\(challenge.lives) lives", systemImage: "heart.fill")
                 Label("Same puzzle for everyone today", systemImage: "globe")
                 Label("One attempt", systemImage: "1.circle")
+                Label("Harder days are worth more points", systemImage: "calendar")
             }
             .font(.system(size: 16, weight: .semibold, design: .rounded))
             .foregroundStyle(.white.opacity(0.85))
@@ -91,6 +97,14 @@ struct DailyView: View {
             }
             .buttonStyle(.arcade)
 
+            if DevOptions.allowsDailyReplay, let challenge {
+                Button("REPLAY (DEV ONLY)") {
+                    DevOptions.forgetDailyResult(dateKey: challenge.dateKey, in: modelContext)
+                    launch = GameLaunch(configuration: .daily(challenge))
+                }
+                .buttonStyle(.arcadeSecondary)
+            }
+
             VStack(spacing: 4) {
                 Text("NEXT PUZZLE IN")
                     .font(.system(size: 12, weight: .heavy, design: .rounded))
@@ -101,6 +115,20 @@ struct DailyView: View {
                     .monospacedDigit()
                     .foregroundStyle(.white)
             }
+        }
+    }
+
+    private func wordsText(_ challenge: DailyChallenge) -> String {
+        guard let range = challenge.lengthRange else { return "\(challenge.words.count) words" }
+        return "\(challenge.words.count) words, \(range.lowerBound) to \(range.upperBound) letters"
+    }
+
+    private func dailyColor(_ difficulty: GameDifficulty) -> Color {
+        switch difficulty {
+        case .easy: Theme.success
+        case .normal: Theme.accent
+        case .hard: .orange
+        case .expert: Theme.danger
         }
     }
 

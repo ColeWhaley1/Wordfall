@@ -6,6 +6,8 @@ struct RecordedGame {
     let isNewHighScore: Bool
     let previousHighScore: Int
     let dailyStreak: Int?
+    let coinsEarned: Int
+    let coinBalance: Int
 }
 
 /// Saves a finished game. Called once per game, never during play.
@@ -72,19 +74,35 @@ enum StatsRecorder {
             }
         }
 
+        var completedDaily = false
+        if case .daily(let challenge) = engine.mode {
+            completedDaily = engine.outcomes.count >= challenge.words.count
+        }
+        let coins = CoinRules.coins(forScore: engine.score, completedDaily: completedDaily)
+        let inventory = Inventory.current(in: context)
+        inventory.earn(coins)
+
         context.insert(GameResult(
             date: now,
             mode: engine.mode.isDaily ? "daily" : "endless",
+            difficulty: engine.difficulty,
             score: engine.score,
             level: engine.level,
             wordsSolved: engine.wordsSolved,
             wordsMissed: engine.wordsMissed,
             highestCombo: engine.bestCombo,
-            duration: engine.elapsedTime
+            duration: engine.elapsedTime,
+            coinsEarned: coins
         ))
         try? context.save()
 
-        return RecordedGame(isNewHighScore: isNewHighScore, previousHighScore: previousHigh, dailyStreak: streak)
+        return RecordedGame(
+            isNewHighScore: isNewHighScore,
+            previousHighScore: previousHigh,
+            dailyStreak: streak,
+            coinsEarned: coins,
+            coinBalance: inventory.coins
+        )
     }
 
     private static func updateStreak(_ stats: PlayerStats, dateKey: String, now: Date, calendar: Calendar) -> Int {

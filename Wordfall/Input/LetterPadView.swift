@@ -169,20 +169,25 @@ struct LetterTileView: View {
     let letter: Character
     let size: CGFloat
     var isSelected = false
+    /// Overrides the equipped theme, e.g. for shop previews.
+    var theme: LetterTheme?
+
+    @Environment(\.cosmetics) private var cosmetics
 
     var body: some View {
+        let theme = theme ?? cosmetics.letters
         Text(String(letter))
             .font(.system(size: size * 0.52, weight: .heavy, design: .rounded))
-            .foregroundStyle(.white.opacity(isSelected ? 0.35 : 1))
+            .foregroundStyle(isSelected ? Color.white.opacity(0.35) : theme.text.color)
             .frame(width: size, height: size)
             .background(
                 RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
-                    .fill(isSelected ? AnyShapeStyle(Color.white.opacity(0.08)) : AnyShapeStyle(Theme.tileGradient))
+                    .fill(isSelected ? AnyShapeStyle(Color.white.opacity(0.08)) : AnyShapeStyle(theme.tileGradient))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
-                    .strokeBorder(.white.opacity(isSelected ? 0.15 : 0.35), lineWidth: 1.5)
+                    .strokeBorder(.white.opacity(isSelected ? 0.15 : theme.outlineOpacity), lineWidth: 1.5)
             )
-            .shadow(color: isSelected ? .clear : Theme.tileBottom.opacity(0.45), radius: 8, y: 4)
+            .shadow(color: isSelected ? .clear : theme.tileBottom.color.opacity(0.45), radius: 8, y: 4)
     }
 }

@@ -6,6 +6,7 @@ struct ScoreBreakdown: Equatable, Sendable {
     let speedMultiplier: Double
     let comboMultiplier: Double
     let levelMultiplier: Double
+    let difficultyMultiplier: Double
     let isPerfect: Bool
     let total: Int
 }
@@ -56,19 +57,20 @@ enum ScoreEngine {
     }
 
     /// - Parameter combo: the combo count including this word.
-    static func score(length: Int, fraction: Double, combo: Int, level: Int) -> ScoreBreakdown {
+    static func score(length: Int, fraction: Double, combo: Int, level: Int, difficulty: GameDifficulty = .normal) -> ScoreBreakdown {
         let base = baseScore(length: length)
         let speed = speedMultiplier(fraction: fraction)
         let comboMultiplier = comboMultiplier(combo: combo)
         let levelMultiplier = levelMultiplier(level: level)
         let perfect = isPerfect(fraction: fraction)
-        var total = Double(base) * speed * comboMultiplier * levelMultiplier
+        var total = Double(base) * speed * comboMultiplier * levelMultiplier * difficulty.pointsMultiplier
         if perfect { total *= perfectBonus }
         return ScoreBreakdown(
             base: base,
             speedMultiplier: speed,
             comboMultiplier: comboMultiplier,
             levelMultiplier: levelMultiplier,
+            difficultyMultiplier: difficulty.pointsMultiplier,
             isPerfect: perfect,
             total: Int(total.rounded())
         )

@@ -16,7 +16,7 @@ struct GameView: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            ThemedBackground()
             if let session {
                 GameContent(session: session, reducedMotion: reducedMotion, onQuit: quit)
             }
@@ -58,6 +58,10 @@ private struct GameContent: View {
     var body: some View {
         let engine = session.engine
         ZStack {
+            // Fades slowly toward the theme's later colours as the words get harder.
+            ThemedBackground(intensity: engine.intensity)
+                .animation(reducedMotion ? .linear(duration: 0.3) : .easeInOut(duration: 3.5), value: engine.intensity)
+
             DangerGlow(progress: engine.activeWord?.progress ?? 0, threshold: engine.configuration.dangerThreshold, flash: session.missFlash, reducedMotion: reducedMotion)
                 .ignoresSafeArea()
 
@@ -106,18 +110,99 @@ private struct GameContent: View {
                     .transition(.opacity)
             }
 
+            if session.showExtraHeartOffer {
+                ExtraHeartOfferView(
+                    score: engine.score,
+                    bestCombo: engine.bestCombo,
+                    isShowingAd: session.isShowingAd,
+                    onWatch: { session.watchAdForExtraHeart() },
+                    onDecline: { session.declineExtraHeart() }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
+
             if session.showGameOver {
                 GameOverView(
                     engine: engine,
                     recorded: session.recorded,
-                    onPlayAgain: session.isDaily ? nil : { session.playAgain() },
-                    onHome: onQuit
+                    onPlayAgain: session.canPlayAgain ? { session.leaveResults { session.playAgain() } } : nil,
+                    onHome: { session.leaveResults(then: onQuit) }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
         }
         .animation(.easeOut(duration: 0.25), value: engine.status)
         .animation(.easeOut(duration: 0.3), value: session.showGameOver)
+        .animation(.easeOut(duration: 0.3), value: session.showExtraHeartOffer)
+    }
+}
+
+/// Out of lives: offers one extra heart for watching a rewarded ad. Only
+/// shown when an ad is already loaded, and the ad only plays on a tap.
+private struct ExtraHeartOfferView: View {
+    let score: Int
+    let bestCombo: Int
+    let isShowingAd: Bool
+    let onWatch: () -> Void
+    let onDecline: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.78).ignoresSafeArea()
+            VStack(spacing: 18) {
+                Text("OUT OF LIVES")
+                    .font(Theme.display(38))
+                    .foregroundStyle(.white)
+
+                VStack(spacing: 2) {
+                    Text(NumberText.grouped(score))
+                        .font(Theme.display(48))
+                        .foregroundStyle(Theme.gold)
+                        .accessibilityLabel("Score \(score)")
+                    Text("BEST COMBO \(bestCombo)")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded))
+                        .tracking(1.5)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 56, weight: .bold))
+                    .foregroundStyle(Theme.danger)
+                    .shadow(color: Theme.danger.opacity(0.7), radius: 18)
+                    .overlay(alignment: .topTrailing) {
+                        Text("+1")
+                            .font(Theme.display(22))
+                            .foregroundStyle(.white)
+                            .offset(x: 22, y: -8)
+                    }
+                    .accessibilityHidden(true)
+                    .padding(.top, 6)
+
+                Text("Watch a short ad to get 1 more life and keep your score, level and progress.")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Button(action: onWatch) {
+                    HStack(spacing: 10) {
+                        if isShowingAd {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "play.rectangle.fill")
+                        }
+                        Text("GET 1 MORE LIFE")
+                    }
+                }
+                .buttonStyle(.arcade)
+                .disabled(isShowingAd)
+
+                Button("END GAME", action: onDecline)
+                    .buttonStyle(.arcadeSecondary)
+                    .disabled(isShowingAd)
+            }
+            .padding(24)
+        }
     }
 }
 
@@ -234,7 +319,7 @@ private struct DangerLine: View {
                 .tracking(3)
                 .foregroundStyle(Theme.danger)
                 .padding(.horizontal, 8)
-                .background(Theme.backgroundBottom)
+                .background(Capsule().fill(.black.opacity(0.55)))
         }
         .accessibilityHidden(true)
     }
@@ -323,9 +408,9 @@ private struct HUDView: View {
 
     private var levelText: String {
         if let progress = engine.dailyProgress {
-            return "DAILY · WORD \(min(progress.played + 1, progress.total)) OF \(progress.total)"
+            return "DAILY · \(engine.difficulty.title) · WORD \(min(progress.played + 1, progress.total)) OF \(progress.total)"
         }
-        return "LEVEL \(engine.level)"
+        return "LEVEL \(engine.level) · \(engine.difficulty.title)"
     }
 }
 
