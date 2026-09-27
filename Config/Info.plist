@@ -1,16 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Merged with the Info.plist Xcode generates from the build settings.
-     Only keys that can't be expressed as INFOPLIST_KEY_ build settings live here. -->
 <plist version="1.0">
 <dict>
-	<!-- AdMob app ID for Word Fallout. -->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8273060205096005~6804088162</string>
-	<!-- Shown if the consent flow asks for App Tracking Transparency permission. -->
-	<key>NSUserTrackingUsageDescription</key>
-	<string>This lets us show you ads that are more relevant to you. Ads keep Word Fallout free.</string>
-	<!-- Google's SKAdNetwork IDs, from https://developers.google.com/admob/ios/quick-start -->
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

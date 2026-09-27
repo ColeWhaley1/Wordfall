@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7F3A1C00000000002B000005"
-               BuildableName = "Wordfall.app"
-               BlueprintName = "Wordfall"
+               BuildableName = "Wordfallout.app"
+               BlueprintName = "Wordfallout"
                ReferencedContainer = "container:Wordfall.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -45,8 +45,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7F3A1C00000000002B000005"
-            BuildableName = "Wordfall.app"
-            BlueprintName = "Wordfall"
+            BuildableName = "Wordfallout.app"
+            BlueprintName = "Wordfallout"
             ReferencedContainer = "container:Wordfall.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -62,8 +62,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7F3A1C00000000002B000005"
-            BuildableName = "Wordfall.app"
-            BlueprintName = "Wordfall"
+            BuildableName = "Wordfallout.app"
+            BlueprintName = "Wordfallout"
             ReferencedContainer = "container:Wordfall.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

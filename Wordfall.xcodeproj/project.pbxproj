@@ -12,7 +12,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		7F3A1C00000000002B000000 /* Wordfall.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wordfall.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F3A1C00000000002B000000 /* Wordfallout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wordfallout.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -47,7 +47,7 @@
 		7F3A1C00000000002B000004 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7F3A1C00000000002B000000 /* Wordfall.app */,
+				7F3A1C00000000002B000000 /* Wordfallout.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,9 +55,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7F3A1C00000000002B000005 /* Wordfall */ = {
+		7F3A1C00000000002B000005 /* Wordfallout */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7F3A1C00000000002B000006 /* Build configuration list for PBXNativeTarget "Wordfall" */;
+			buildConfigurationList = 7F3A1C00000000002B000006 /* Build configuration list for PBXNativeTarget "Wordfallout" */;
 			buildPhases = (
 				7F3A1C00000000002B000007 /* Sources */,
 				7F3A1C00000000002B000002 /* Frameworks */,
@@ -70,13 +70,13 @@
 			fileSystemSynchronizedGroups = (
 				7F3A1C00000000002B000001 /* Wordfall */,
 			);
-			name = Wordfall;
+			name = Wordfallout;
 			packageProductDependencies = (
 				7F3A1C00000000002B000012 /* GoogleMobileAds */,
 				7F3A1C00000000002B000013 /* GoogleUserMessagingPlatform */,
 			);
 			productName = Wordfall;
-			productReference = 7F3A1C00000000002B000000 /* Wordfall.app */;
+			productReference = 7F3A1C00000000002B000000 /* Wordfallout.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -112,7 +112,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7F3A1C00000000002B000005 /* Wordfall */,
+				7F3A1C00000000002B000005 /* Wordfallout */,
 			);
 		};
 /* End PBXProject section */
@@ -270,6 +270,7 @@
 				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Word Fallout";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.word-games";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This lets us show you ads that are more relevant to you. Ads keep Word Fallout free.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,7 +283,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = "-ObjC";
-				PRODUCT_BUNDLE_IDENTIFIER = com.colewhaley.wordfall;
+				PRODUCT_BUNDLE_IDENTIFIER = com.colewhaley.wordfallout;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -307,6 +308,7 @@
 				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Word Fallout";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.word-games";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This lets us show you ads that are more relevant to you. Ads keep Word Fallout free.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -319,7 +321,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = "-ObjC";
-				PRODUCT_BUNDLE_IDENTIFIER = com.colewhaley.wordfall;
+				PRODUCT_BUNDLE_IDENTIFIER = com.colewhaley.wordfallout;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -334,7 +336,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7F3A1C00000000002B000006 /* Build configuration list for PBXNativeTarget "Wordfall" */ = {
+		7F3A1C00000000002B000006 /* Build configuration list for PBXNativeTarget "Wordfallout" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7F3A1C00000000002B00000D /* Debug */,
