@@ -1,6 +1,6 @@
 # Privacy Policy for Word Fallout
 
-**Effective date:** September 27, 2026
+**Effective date:** September 28, 2026
 
 Word Fallout ("the App") is developed by Cole Whaley ("we," "us"). This policy explains what data the App collects and how it's used.
 
@@ -38,7 +38,7 @@ We do not control what Google or its advertising partners do with this data. For
 - How Google uses data from partner sites/apps: https://policies.google.com/technologies/partner-sites
 - AdMob's data disclosure: https://support.google.com/admob/answer/6128543
 
-The App does not use Apple's App Tracking Transparency framework and does not access or share your device's advertising identifier (IDFA) directly.
+**Tracking permission.** After the consent step above, the App asks for permission, through Apple's App Tracking Transparency prompt, to let Google use your device's advertising identifier (IDFA) to show more relevant ads. You can say no; ads will still appear, just less personalized. You can change this anytime in iOS Settings → Privacy & Security → Tracking. We never access or store the advertising identifier ourselves.
 
 ## Analytics
 

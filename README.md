@@ -105,8 +105,14 @@ achievements (these need App Store Connect setup).
   `game_over_after_rewarded`, …). No provider is connected; debug builds print
   them. Debug builds also have an **Ads (dev only)** section in Settings to see
   and reset the counters.
-- Debug builds always use Google's test units. Release builds use the real
-  units: rewarded `ca-app-pub-8273060205096005/1305097902`, interstitial
+- **Tracking:** after the consent step, the app asks for App Tracking
+  Transparency permission (text in `Config/Info.plist`), so Google can show
+  personalised ads to players who allow it.
+- **Test vs live ads:** Debug builds, and TestFlight builds (detected by
+  their sandbox receipt), use Google's test units. App Store builds use the
+  real units. A Release build run straight from Xcode also counts as
+  production, so add your own iPhone as a test device in AdMob before doing
+  that. The live units are rewarded `ca-app-pub-8273060205096005/1305097902`, interstitial
   `ca-app-pub-8273060205096005/1378259257`. Never tap or repeatedly watch your
   own live ads.
 - Before release: create and publish a GDPR consent message (and optionally

@@ -1,6 +1,9 @@
+import AppTrackingTransparency
 import Foundation
 import GoogleMobileAds
 import Observation
+import OSLog
+import UIKit
 
 /// Loads and shows AdMob ads. It never decides *whether* an ad should be
 /// shown; that's `AdPolicy`. Both ad types are preloaded as soon as consent
@@ -10,15 +13,11 @@ import Observation
 @Observable
 final class AdManager: NSObject {
     enum AdUnit {
-        // Debug builds must use Google's test units: tapping or repeatedly
-        // viewing your own live ads breaks AdMob policy.
-        #if DEBUG
-        static let rewardedExtraHeart = "ca-app-pub-3940256099942544/1712485313"
-        static let interstitial = "ca-app-pub-3940256099942544/4411468910"
-        #else
-        static let rewardedExtraHeart = "ca-app-pub-8273060205096005/1305097902"
-        static let interstitial = "ca-app-pub-8273060205096005/1378259257"
-        #endif
+        static let liveRewardedExtraHeart = "ca-app-pub-8273060205096005/1305097902"
+        static let liveInterstitial = "ca-app-pub-8273060205096005/1378259257"
+        // Google's public test units.
+        static let testRewardedExtraHeart = "ca-app-pub-3940256099942544/1712485313"
+        static let testInterstitial = "ca-app-pub-3940256099942544/4411468910"
     }
 
     enum RewardedOutcome {
@@ -36,6 +35,10 @@ final class AdManager: NSObject {
     private(set) var isInterstitialReady = false
 
     @ObservationIgnored private var hasStarted = false
+    /// Live ads only in App Store builds. Debug, Xcode and TestFlight builds
+    /// get Google's test ads: viewing or tapping your own live ads breaks
+    /// AdMob policy and can get the account suspended.
+    @ObservationIgnored private(set) var usesTestAds = true
     @ObservationIgnored private var sdkStarted = false
     @ObservationIgnored private var rewardedAd: RewardedAd?
     @ObservationIgnored private var interstitialAd: InterstitialAd?
@@ -56,7 +59,10 @@ final class AdManager: NSObject {
     func start() async {
         guard !hasStarted else { return }
         hasStarted = true
+        usesTestAds = await Self.isDevelopmentBuild()
+        Logger(subsystem: "com.colewhaley.wordfallout", category: "Ads").notice("Using \(self.usesTestAds ? "test" : "live", privacy: .public) ad units")
         await consent.gather()
+        await requestTrackingIfNeeded()
         startIfAllowed()
     }
 
@@ -100,6 +106,32 @@ final class AdManager: NSObject {
         ad.present(from: nil)
     }
 
+    // MARK: Environment
+
+    /// True for Debug builds, and for Release builds not installed from the
+    /// App Store (Xcode or TestFlight), which get a sandbox receipt.
+    /// `AppTransaction` would be the modern check, but it can show an Apple
+    /// Account sign-in prompt at launch, so the receipt path is used instead.
+    private static func isDevelopmentBuild() async -> Bool {
+        #if DEBUG
+        return true
+        #else
+        return Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+        #endif
+    }
+
+    /// Asks for permission to use the advertising identifier, which lets
+    /// Google show personalised ads. Only after Google's consent step, and
+    /// only once: iOS never shows the prompt again after it's answered.
+    private func requestTrackingIfNeeded() async {
+        guard consent.canRequestAds, ATTrackingManager.trackingAuthorizationStatus == .notDetermined else { return }
+        // iOS ignores the request unless the app is in the foreground.
+        while UIApplication.shared.applicationState != .active {
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        _ = await ATTrackingManager.requestTrackingAuthorization()
+    }
+
     // MARK: Loading
 
     private func startIfAllowed() {
@@ -117,7 +149,7 @@ final class AdManager: NSObject {
         Task {
             defer { loadingRewarded = false }
             do {
-                let ad = try await RewardedAd.load(with: AdUnit.rewardedExtraHeart, request: Request())
+                let ad = try await RewardedAd.load(with: usesTestAds ? AdUnit.testRewardedExtraHeart : AdUnit.liveRewardedExtraHeart, request: Request())
                 ad.fullScreenContentDelegate = self
                 rewardedAd = ad
                 rewardedRetries = 0
@@ -136,7 +168,7 @@ final class AdManager: NSObject {
         Task {
             defer { loadingInterstitial = false }
             do {
-                let ad = try await InterstitialAd.load(with: AdUnit.interstitial, request: Request())
+                let ad = try await InterstitialAd.load(with: usesTestAds ? AdUnit.testInterstitial : AdUnit.liveInterstitial, request: Request())
                 ad.fullScreenContentDelegate = self
                 interstitialAd = ad
                 interstitialRetries = 0

@@ -4,6 +4,8 @@
 <dict>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8273060205096005~6804088162</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This lets us show you ads that are more relevant to you. Ads keep Word Fallout free.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
